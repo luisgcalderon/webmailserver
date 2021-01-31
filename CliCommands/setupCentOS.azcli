@@ -1,0 +1,9 @@
+az group create -n dev-webmailserver -l southcentralus
+az network nsg create --name webmailnsg -g dev-webmailserver 
+az network vnet create -n dev-frontvn -g dev-webmailserver --address-prefixes 1.0.0.0/24 --subnet-name servers --subnet-prefixes 1.0.0.0/24 --network-security-group webmailnsg
+az
+az vm create --name dev-centos-webpanel1 -g dev-webmailserver --admin-username luisgcalderon 
+
+az vm image list-offers -l southcentralus -p OpenLogic
+
+az group delete -n dev-webmailserver -y --no-wait
