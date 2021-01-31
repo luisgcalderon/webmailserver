@@ -1,9 +1,37 @@
 az group create -n dev-webmailserver -l southcentralus
 az network nsg create --name webmailnsg -g dev-webmailserver 
-az network vnet create -n dev-frontvn -g dev-webmailserver --address-prefixes 1.0.0.0/24 --subnet-name servers --subnet-prefixes 1.0.0.0/24 --network-security-group webmailnsg
-az
-az vm create --name dev-centos-webpanel1 -g dev-webmailserver --admin-username luisgcalderon 
+az network nsg rule list --nsg-name webmailnsg -g dev-webmailserver
+az network public-ip create --name web-srv-ip -g dev-webmailserver --allocation-method Static --dns-name sr1-devcalcon --sku Basic 
+az network vnet create -n dev-frontvn `
+    -g dev-webmailserver `
+    --address-prefixes 1.0.0.0/24 `
+    --subnet-name servers `
+    --subnet-prefixes 1.0.0.0/24 `
+    --network-security-group webmailnsg
+    --authentication-type ssh `
+    --generate-ssh-keys `
+az vm create --name dev-centos-webpanel1 `
+    -g dev-webmailserver `
+    --admin-username luisgcalderon `
+    --admin-password 'Chimino2201!'`
+    --computer-name sr1.devcalcon.icu `
+    --image CentOS `
+    --nsg webmailnsg `
+    --nsg-rule SSH `
+    --public-ip-address web-srv-ip `
+    --size Standard_B1s `
+    --vnet-name dev-frontvn `
+    --subnet servers `
+    --storage-sku Standard_LRS 
 
-az vm image list-offers -l southcentralus -p OpenLogic
+
 
 az group delete -n dev-webmailserver -y --no-wait
+az network nsg rule create --nsg-name webmailnsg -g dev-webmailserver --name SSHConnection --priority 150 --access Allow 
+
+#Auxiliares
+az vm image list-offers -l southcentralus -p OpenLogic
+az vm image list -l southcentralus -f CentOS -p OpenLogic --query "[?contains(sku, '7')]"
+az vm list-sizes -l southcentralus --query "[1]"
+az vm list-sizes -l southcentralus --query "[1].memoryInMb"
+az vm list-sizes -l southcentralus --query "[?name=='Standard_B1s']"
