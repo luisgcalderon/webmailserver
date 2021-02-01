@@ -1,30 +1,67 @@
 az group create -n dev-webmailserver -l southcentralus
-az network nsg create --name webmailnsg -g dev-webmailserver 
-az network nsg rule list --nsg-name webmailnsg -g dev-webmailserver
-az network public-ip create --name web-srv-ip -g dev-webmailserver --allocation-method Static --dns-name sr1-devcalcon --sku Basic 
+az network public-ip create --name web-nat-ip -g dev-webmailserver --allocation-method Static --dns-name nat-devcalcon --sku standard
+az network public-ip prefix create `
+    -g dev-webmailserver `
+    -n web-nat-ipprefix `
+    --length 31
+az network nat gateway create `
+    -g dev-webmailserver `
+    -n webmailNATgateway `
+    --public-ip-addresses web-nat-ip `
+    --public-ip-prefixes web-nat-ipprefix 
+
+
 az network vnet create -n dev-frontvn `
     -g dev-webmailserver `
     --address-prefixes 1.0.0.0/24 `
     --subnet-name servers `
-    --subnet-prefixes 1.0.0.0/24 `
+    --subnet-prefixes 1.0.0.0/24
+
+az network vnet subnet update `
+    -g dev-webmailserver `
+    --vnet-name dev-frontvn `
+    --name servers `
+    --nat-gateway webmailNATgateway
+
+az network public-ip create --name web-srv-ip -g dev-webmailserver --allocation-method static --dns-name sr1-devcalcon --sku standard
+az network nsg create --name webmailnsg -g dev-webmailserver
+az network nsg rule create `
+    -g dev-webmailserver `
+    --nsg-name webmailnsg `
+    --priority 100 `
+    --name ssh `
+    --description "SSH access" `
+    --access allow `
+    --protocol tcp `
+    --direction inbound `
+    --destination-port-ranges 22
+az network nsg rule list --nsg-name webmailnsg -g dev-webmailserver
+
+az network nic create `
+    -g dev-webmailserver `
+    -n sr1Nic `
+    --subnet servers `
+    --vnet-name dev-frontvn `
+    --public-ip-address web-srv-ip `
     --network-security-group webmailnsg
-    --authentication-type ssh `
-    --generate-ssh-keys `
-az vm create --name dev-centos-webpanel1 `
+
+    --admin-password 'Chimino2201!'`
+az vm create --name dev-debian9-webpanel1 `
     -g dev-webmailserver `
     --admin-username luisgcalderon `
-    --admin-password 'Chimino2201!'`
-    --computer-name sr1.devcalcon.icu `
-    --image CentOS `
-    --nsg webmailnsg `
-    --nsg-rule SSH `
-    --public-ip-address web-srv-ip `
+    --computer-name srv1.devcalcon.icu `
+    --authentication-type ssh `
+    --generate-ssh-keys `
+    --image credativ:Debian:9:9.20210129.0 `
     --size Standard_B1s `
-    --vnet-name dev-frontvn `
-    --subnet servers `
+    --nic sr1Nic `
     --storage-sku Standard_LRS 
 
-
+$ip =$(az network public-ip show `
+    -g dev-webmailserver `
+    --name web-srv-ip `
+    --query [ipAddress] `
+    --output tsv )
 
 az group delete -n dev-webmailserver -y --no-wait
 az network nsg rule create --nsg-name webmailnsg -g dev-webmailserver --name SSHConnection --priority 150 --access Allow 
@@ -32,6 +69,8 @@ az network nsg rule create --nsg-name webmailnsg -g dev-webmailserver --name SSH
 #Auxiliares
 az vm image list-offers -l southcentralus -p OpenLogic
 az vm image list -l southcentralus -f CentOS -p OpenLogic --query "[?contains(sku, '7')]"
+az vm image list -l southcentralus -f Debian -p Debian --all --query "[0:5]"
+az vm image list -l southcentralus -f Debian --all --query "[?contains(sku, '9')]"
 az vm list-sizes -l southcentralus --query "[1]"
 az vm list-sizes -l southcentralus --query "[1].memoryInMb"
 az vm list-sizes -l southcentralus --query "[?name=='Standard_B1s']"
