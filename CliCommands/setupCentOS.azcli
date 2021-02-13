@@ -35,6 +35,37 @@ az network nsg rule create `
     --protocol tcp `
     --direction inbound `
     --destination-port-ranges 22
+az network nsg rule create `
+    -g dev-webmailserver `
+    --nsg-name webmailnsg `
+    --priority 1000 `
+    --name OpenMail `
+    --description "AccessToMail" `
+    --access allow `
+    --protocol tcp `
+    --direction inbound `
+    --destination-port-ranges 8081
+az network nsg rule create `
+    -g dev-webmailserver `
+    --nsg-name webmailnsg `
+    --priority 1100 `
+    --name IMAP `
+    --description "AccessToMail" `
+    --access allow `
+    --protocol tcp `
+    --direction inbound `
+    --destination-port-ranges 993
+
+az network nsg rule create `
+    -g dev-webmailserver `
+    --nsg-name webmailnsg `
+    --priority 1100 `
+    --name SMNTP `
+    --description "AccessToMail" `
+    --access allow `
+    --protocol tcp `
+    --direction outbound `
+    --source-port-ranges 25
 az network nsg rule list --nsg-name webmailnsg -g dev-webmailserver
 
 az network nic create `
