@@ -1,14 +1,7 @@
+$SSHPub='C:\Users\luisg\.ssh\az\devlab_id_rsa.pub'
+$SSHKey='C:\Users\luisg\.ssh\az\devlab_id_rsa'
+
 az group create -n dev-webmailserver -l southcentralus
-az network public-ip create --name web-nat-ip -g dev-webmailserver --allocation-method Static --dns-name nat-devcalcon --sku standard
-az network public-ip prefix create `
-    -g dev-webmailserver `
-    -n web-nat-ipprefix `
-    --length 31
-az network nat gateway create `
-    -g dev-webmailserver `
-    -n webmailNATgateway `
-    --public-ip-addresses web-nat-ip `
-    --public-ip-prefixes web-nat-ipprefix 
 
 
 az network vnet create -n dev-frontvn `
@@ -21,9 +14,8 @@ az network vnet subnet update `
     -g dev-webmailserver `
     --vnet-name dev-frontvn `
     --name servers `
-    --nat-gateway webmailNATgateway
 
-az network public-ip create --name web-srv-ip -g dev-webmailserver --allocation-method static --dns-name sr1-devcalcon --sku standard
+az network public-ip create --name web-srv-ip -g dev-webmailserver --allocation-method dynamic --dns-name sr1-devcalcon --sku basic
 az network nsg create --name webmailnsg -g dev-webmailserver
 az network nsg rule create `
     -g dev-webmailserver `
@@ -39,33 +31,73 @@ az network nsg rule create `
     -g dev-webmailserver `
     --nsg-name webmailnsg `
     --priority 1000 `
-    --name OpenMail `
-    --description "AccessToMail" `
+    --name SMTP `
+    --description "Simple Mail Transfer Protocol" `
     --access allow `
     --protocol tcp `
     --direction inbound `
-    --destination-port-ranges 8081
+    --destination-port-ranges 25
 az network nsg rule create `
     -g dev-webmailserver `
     --nsg-name webmailnsg `
-    --priority 1100 `
-    --name IMAP `
-    --description "AccessToMail" `
+    --priority 1010 `
+    --name SMTPS `
+    --description "Secure SMTP" `
     --access allow `
     --protocol tcp `
     --direction inbound `
-    --destination-port-ranges 993
+    --destination-port-ranges 465
 
 az network nsg rule create `
     -g dev-webmailserver `
     --nsg-name webmailnsg `
-    --priority 1100 `
-    --name SMNTP `
-    --description "AccessToMail" `
+    --priority 1020 `
+    --name MSA `
+    --description "MailSubmissionProtocol" `
     --access allow `
     --protocol tcp `
-    --direction outbound `
-    --source-port-ranges 25
+    --direction inbound `
+    --destination-port-ranges 587
+az network nsg rule create `
+    -g dev-webmailserver `
+    --nsg-name webmailnsg `
+    --priority 1030 `
+    --name POP3 `
+    --description "Post Office Protocol 3" `
+    --access allow `
+    --protocol tcp `
+    --direction inbound `
+    --destination-port-ranges 110
+az network nsg rule create `
+    -g dev-webmailserver `
+    --nsg-name webmailnsg `
+    --priority 1040 `
+    --name SPOP3 `
+    --description "Secure Post Office Protocol 3" `
+    --access allow `
+    --protocol tcp `
+    --direction inbound `
+    --destination-port-ranges 995
+az network nsg rule create `
+    -g dev-webmailserver `
+    --nsg-name webmailnsg `
+    --priority 1050 `
+    --name IMAP `
+    --description "Internet Message Access Protocol" `
+    --access allow `
+    --protocol tcp `
+    --direction inbound `
+    --destination-port-ranges 143
+az network nsg rule create `
+    -g dev-webmailserver `
+    --nsg-name webmailnsg `
+    --priority 1060 `
+    --name SIMAP `
+    --description "Secure Internet Message Access Protocol" `
+    --access allow `
+    --protocol tcp `
+    --direction inbound `
+    --destination-port-ranges 993
 az network nsg rule list --nsg-name webmailnsg -g dev-webmailserver
 
 az network nic create `
@@ -77,13 +109,13 @@ az network nic create `
     --network-security-group webmailnsg
 
     --admin-password 'Chimino2201!'`
-az vm create --name dev-debian9-webpanel1 `
+az vm create --name dev-centos-mailserver `
     -g dev-webmailserver `
     --admin-username luisgcalderon `
-    --computer-name srv1.devcalcon.icu `
+    --computer-name srv1 `
     --authentication-type ssh `
-    --generate-ssh-keys `
-    --image credativ:Debian:9:9.20210129.0 `
+    --ssh-key-values $SSHPub `
+    --image centos `
     --size Standard_B1s `
     --nic sr1Nic `
     --storage-sku Standard_LRS 
@@ -93,6 +125,8 @@ $ip =$(az network public-ip show `
     --name web-srv-ip `
     --query [ipAddress] `
     --output tsv )
+
+ssh -i ~\.ssh\az\devlab_id_rsa luisgcalderon@srv1-devcalcon.southcentralus.cloudapp.azure.com
 
 az group delete -n dev-webmailserver -y --no-wait
 az network nsg rule create --nsg-name webmailnsg -g dev-webmailserver --name SSHConnection --priority 150 --access Allow 
