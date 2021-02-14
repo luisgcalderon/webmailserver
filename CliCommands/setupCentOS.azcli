@@ -1,21 +1,21 @@
-$SSHPub='C:\Users\luisg\.ssh\az\devlab_id_rsa.pub'
-$SSHKey='C:\Users\luisg\.ssh\az\devlab_id_rsa'
+$SSHPub='C:\Users\luisg\.ssh\az\dev_websrv1\id_rsa.pub'
+$SSHKey='C:\Users\luisg\.ssh\az\dev_websrv1\id_rsa'
 
 az group create -n dev-webmailserver -l southcentralus
 
 
 az network vnet create -n dev-frontvn `
     -g dev-webmailserver `
-    --address-prefixes 1.0.0.0/24 `
+    --address-prefixes 192.0.0.0/24 `
     --subnet-name servers `
-    --subnet-prefixes 1.0.0.0/24
+    --subnet-prefixes 192.0.0.0/25
 
 az network vnet subnet update `
     -g dev-webmailserver `
     --vnet-name dev-frontvn `
     --name servers `
 
-az network public-ip create --name web-srv-ip -g dev-webmailserver --allocation-method dynamic --dns-name sr1-devcalcon --sku basic
+az network public-ip create --name web-srv-ip -g dev-webmailserver --allocation-method dynamic --dns-name srv1-devcalcon --sku basic
 az network nsg create --name webmailnsg -g dev-webmailserver
 az network nsg rule create `
     -g dev-webmailserver `
@@ -126,7 +126,7 @@ $ip =$(az network public-ip show `
     --query [ipAddress] `
     --output tsv )
 
-ssh -i ~\.ssh\az\devlab_id_rsa luisgcalderon@srv1-devcalcon.southcentralus.cloudapp.azure.com
+ssh -i $SSHKey luisgcalderon@srv1-devcalcon.southcentralus.cloudapp.azure.com
 
 az group delete -n dev-webmailserver -y --no-wait
 az network nsg rule create --nsg-name webmailnsg -g dev-webmailserver --name SSHConnection --priority 150 --access Allow 
